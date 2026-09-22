@@ -55,7 +55,7 @@
       prev.set(t.id, { done: t.done, tags: t.tags.map((g) => g.on) });
     }
     firstPaint = false;
-    $('#updated').textContent = 'Обновлено ' + new Date().toLocaleTimeString('ru-RU');
+    $('#updated').textContent = (params.get('demo') ? 'Демонстрация · ' : 'Обновлено ') + new Date().toLocaleTimeString('ru-RU');
   }
 
   function countUp(node, from, to) {
@@ -96,5 +96,38 @@
   $('#timer').ondblclick = () => { clearInterval(tick); tick = null; left = total; paint(); };
   paint();
 
-  key ? showBoard() : showLogin();
+  // --- Демо-режим: ?demo=1 — прогресс идёт сам, без учеников и без ключа ---
+  const DEMO = [
+    { id: 'olga', name: 'Ольга', age: 38, letter: 'О', team: 'Команда 1', code: '101', accent: '#FF7A1A', accent_green: '#3DDC84', photo: 'img/olga.svg', photo_green: 'img/olga-green.svg', total: 4,
+      labels: ['Повод', 'Стиль сейчас', 'Время на сборы', 'Страх'], extraLabels: ['Успешный образ'] },
+    { id: 'marina', name: 'Марина', age: 52, letter: 'М', team: 'Команда 2', code: '202', accent: '#F4C95D', accent_green: '#9FE870', photo: 'img/marina.svg', photo_green: 'img/marina-green.svg', total: 4,
+      labels: ['Прошлый образ', 'Страх', 'Не молодиться', 'Образ с характером'], extraLabels: [] },
+    { id: 'alina', name: 'Алина', age: 24, letter: 'А', team: 'Команда 3', code: '303', accent: '#FF5A5F', accent_green: '#FF5A5F', photo: 'img/alina.svg', photo_green: 'img/alina-green.svg', total: 4,
+      labels: ['Цель', 'Время на сборы', 'Цвет волос', 'Чувство'], extraLabels: ['Референсы'] },
+  ];
+  let demoDone = [1, 0, 2];
+
+  function demoTeams() {
+    return DEMO.map((d, i) => ({
+      ...d, done: demoDone[i], sessions: [2, 3, 2][i], finished: demoDone[i] === d.total,
+      tags: d.labels.map((label, j) => ({ label, on: j < demoDone[i] })),
+      extra: demoDone[i] === d.total ? d.extraLabels : [],
+    }));
+  }
+
+  function runDemo() {
+    $('#login').classList.add('hidden'); $('#board').classList.remove('hidden');
+    $('#reset-btn').textContent = 'Демо-режим: сбросить прогресс';
+    $('#reset-btn').onclick = () => { demoDone = [0, 0, 0]; render(demoTeams()); };
+    render(demoTeams());
+    setInterval(() => {
+      const i = Math.floor(Math.random() * 3);
+      if (demoDone[i] < DEMO[i].total && Math.random() > 0.35) demoDone[i]++;
+      if (demoDone.every((d, k) => d === DEMO[k].total)) demoDone = [0, 1, 0];
+      render(demoTeams());
+    }, 4000);
+  }
+
+  if (params.get('demo')) runDemo();
+  else key ? showBoard() : showLogin();
 })();
