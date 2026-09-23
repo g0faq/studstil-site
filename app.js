@@ -18,7 +18,6 @@
   let waitTimer = null;
   let entering = 0; // метка последнего входа: ответ старого запроса не должен перетирать новый
   let shown = 0; // сколько сообщений уже анимировано (остальные не переигрываем)
-  let fresh = new Set(); // индексы только что раскрывших факт ответов
   // Свои иконки вместо эмодзи
   const ICON = {
     unlock: '<svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 9V6.6A4 4 0 0 1 13.6 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="3.2" y="9" width="13.6" height="8.4" rx="2.6" fill="currentColor"/><circle cx="10" cy="13.2" r="1.5" fill="var(--bg2)"/></svg>',
@@ -26,7 +25,6 @@
     done: '<svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="currentColor" opacity=".18"/><path d="M5.6 10.4l2.9 2.9 5.9-6.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   };
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const hits = new Set(); // индексы сообщений, раскрывших факт (для обводки)
   const extra = []; // системные строки в ленте: { after: индекс сообщения, text, err }
 
   async function api(path, body) {
@@ -85,7 +83,7 @@
       const r = await api('/api/session', { code, deviceId });
       if (mark !== entering) return; // пока ждали ответ, ввели другой код
       sessionId = r.sessionId; store.set('bc-session', sessionId);
-      hits.clear(); extra.length = 0; shown = 0;
+      extra.length = 0; shown = 0;
       apply(r.state); go(r.state.phase === 'lobby' ? 'wait' : 'card');
     } catch (err) {
       $('#code-err').textContent = err.message;
@@ -173,17 +171,17 @@
     const box = $('#msgs'); box.replaceChildren();
     state.messages.forEach((m, i) => {
       const old = i < shown ? ' old' : '';
-      box.append(bubble(m.who + (hits.has(i) ? ' hit' : '') + (fresh.has(i) ? ' reveal' : '') + old, m.text));
-      for (const x of extra.filter((x) => x.after === i)) {
-        if (x.stamp) {
-          const st = document.createElement('div');
-          st.className = 'stamp' + (fresh.has(i) ? ' fresh' : '');
-          st.innerHTML = ICON.unlock + '<span></span>';
-          st.querySelector('span').textContent = x.text;
-          box.append(st);
-        }
-        else box.append(bubble('sys' + (x.err ? ' err' : '') + old, x.text));
+      const hit = (m.reveals || []).length ? ' hit' : '';
+      const reveal = hit && !old ? ' reveal' : '';
+      box.append(bubble(m.who + hit + reveal + old, m.text));
+      for (const label of m.reveals || []) {
+        const st = document.createElement('div');
+        st.className = 'stamp' + (old ? '' : ' fresh');
+        st.innerHTML = ICON.unlock + '<span></span>';
+        st.querySelector('span').textContent = label;
+        box.append(st);
       }
+      for (const x of extra.filter((x) => x.after === i)) box.append(bubble('sys' + (x.err ? ' err' : '') + old, x.text));
     });
     shown = state.messages.length;
     if (state.finished && state.final) { box.append(bubble('them hit', state.final.message)); const s = bubble('sys', ''); s.innerHTML = ICON.spark + '<span></span>'; s.querySelector('span').textContent = 'Вы выяснили запрос клиентки! Нажмите «Сформулировать проблему»'; box.append(s); }
@@ -191,7 +189,21 @@
     $('#status').textContent = typing ? 'печатает…' : 'в сети';
     scrollDown();
   }
-  const scrollDown = () => { const b = $('#msgs'); requestAnimationFrame(() => { b.scrollTop = b.scrollHeight; }); };
+  // Лента «прилипает» к низу: высота меняется после появления штампа факта и переноса строк,
+  // поэтому докручиваем и на следующем кадре, и после отрисовки шрифтов.
+  let stick = true;
+  const msgsBox = $('#msgs');
+  const atBottom = () => msgsBox.scrollHeight - msgsBox.scrollTop - msgsBox.clientHeight < 90;
+  msgsBox.addEventListener('scroll', () => { stick = atBottom(); });
+  const pin = () => { msgsBox.scrollTop = msgsBox.scrollHeight; };
+  const scrollDown = (force = false) => {
+    if (!force && !stick) return; // студент листает историю — не дёргаем
+    stick = true;
+    requestAnimationFrame(() => { pin(); requestAnimationFrame(pin); });
+    setTimeout(pin, 180);
+  };
+  new ResizeObserver(() => { if (stick) pin(); }).observe(msgsBox);
+  if (window.visualViewport) visualViewport.addEventListener('resize', () => { if (stick) setTimeout(pin, 60); }); // клавиатура на телефоне
 
   function renderChips() {
     const box = $('#chips'); box.replaceChildren();
@@ -204,7 +216,8 @@
 
   function renderDone() {
     if (!state?.final) return;
-    $('#problem').textContent = state.final.problem;
+    // Диагноз и эталон не показываем: команда формулирует решение сама
+    $('#problem').textContent = `«${state.final.message}»`;
     const facts = $('#done-facts'); facts.replaceChildren();
     state.revealed.forEach((f, i) => {
       const row = document.createElement('div'); row.className = 'row';
@@ -215,12 +228,46 @@
       facts.append(row);
     });
     const tasks = $('#tasks'); tasks.replaceChildren();
-    for (const t of state.final.tasks) {
-      const r = document.createElement('div'); r.style.cssText = 'display:flex;gap:10px;font-size:15px;line-height:1.4;font-weight:600';
-      r.innerHTML = '<span style="opacity:.7">—</span><span></span>'; r.lastChild.textContent = t; tasks.append(r);
-    }
+    (state.final.brief || []).forEach((t, i) => {
+      const r = document.createElement('div');
+      r.style.cssText = 'display:flex;gap:10px;font-size:15px;line-height:1.4;font-weight:600';
+      r.innerHTML = '<span style="opacity:.7"></span><span></span>';
+      r.firstChild.textContent = String(i + 1) + '.';
+      r.lastChild.textContent = t;
+      tasks.append(r);
+    });
     $('#task-time').textContent = state.final.task_time;
+    $('#to-solve').textContent = state.solution ? `Ваша оценка: ${state.solution.score} из 10` : 'Предложить решение';
+    renderReference();
     confetti();
+  }
+
+  // Разбор преподавателя — только после того, как команда прислала свой ответ
+  function renderReference() {
+    const box = $('#reference');
+    const r = state?.reference;
+    box.classList.toggle('hidden', !r);
+    if (!r) return;
+    box.replaceChildren();
+    const h = document.createElement('div'); h.className = 'caps'; h.style.color = 'var(--accent)';
+    h.textContent = 'Разбор преподавателя';
+    const p = document.createElement('div'); p.style.cssText = 'font-size:14px;line-height:1.45';
+    p.textContent = r.problem;
+    box.append(h, p);
+    for (const [title, items] of [['Одежда', r.outfit], ['Стрижка, укладка, цвет', r.hair], ['Макияж', r.makeup]]) {
+      if (!items?.length) continue;
+      const t = document.createElement('div'); t.className = 'caps dim';
+      t.style.cssText = 'font-size:10px;letter-spacing:.14em;padding-top:6px';
+      t.textContent = title;
+      box.append(t);
+      for (const it of items) {
+        const row = document.createElement('div');
+        row.style.cssText = 'font-size:13px;line-height:1.45;display:flex;gap:8px';
+        row.innerHTML = '<span style="opacity:.6">—</span><span></span>';
+        row.lastChild.textContent = it;
+        box.append(row);
+      }
+    }
   }
 
   // --- Отправка вопроса ---
@@ -231,8 +278,8 @@
     if (!text || busy) return;
     busy = true; input.value = '';
     state.messages.push({ who: 'me', text });
-    fresh = new Set();
     renderMsgs(true);
+    scrollDown(true);
     try {
       const r = await api('/api/message', { sessionId, text, deviceId });
       const before = state.messages.length;
@@ -240,10 +287,7 @@
       apply(r.state);
       shown = prevShown; // apply() перерисовал ленту — ответ ещё не «показан»
       const last = state.messages.length - 1;
-      fresh = new Set();
       if (r.newly.length) {
-        hits.add(last); fresh.add(last);
-        for (const f of r.newly) extra.push({ after: last, text: f.label, stamp: true });
         $('#prog-fill').classList.remove('glint'); void $('#prog-fill').offsetWidth; $('#prog-fill').classList.add('glint');
         setTimeout(() => burst($('#prog-fill')), 350);
       }
@@ -296,6 +340,7 @@
     }
     fillPanel($('#score-strengths'), 'Сильные стороны', s.strengths, ICON.done);
     fillPanel($('#score-missed'), 'Что доработать', s.missed, ICON.spark);
+    renderReference();
   }
 
   function fillPanel(box, title, items, icon) {
@@ -374,7 +419,7 @@
   }
 
   function resetToStart() {
-    store.set('bc-session', null); sessionId = null; state = null; hits.clear(); extra.length = 0; shown = 0; fresh = new Set();
+    store.set('bc-session', null); sessionId = null; state = null; extra.length = 0; shown = 0;
     $('#app').style.removeProperty('--accent'); $('#app').style.removeProperty('--accent-soft');
     clearInterval(waitTimer); clearInterval(syncTimer); $('#code').value = ''; go('start');
   }
