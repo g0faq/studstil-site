@@ -18,7 +18,7 @@
   h1 { font-family: Unbounded, sans-serif; font-weight: 800; font-size: clamp(30px, 4.4vw, 72px); line-height: 1; letter-spacing: -0.04em; margin: 0; }
   .subline { font-size: clamp(13px, 1.1vw, 20px); color: var(--dim); font-weight: 600; }
 
-  .podium { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(12px, 1.4vw, 26px); align-items: end; }
+  .podium { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: clamp(12px, 1.4vw, 26px); align-items: stretch; }
   @media (max-width: 900px) { .podium { grid-template-columns: 1fr; } }
   .p-card { --accent: #FF7A1A; position: relative; overflow: hidden; border-radius: clamp(20px, 2vw, 32px); padding: clamp(16px, 1.8vw, 30px);
     display: flex; flex-direction: column; gap: clamp(8px, 1.2vh, 16px); animation: riseIn .6s var(--ease-out) both; animation-delay: calc(var(--i) * 140ms); }

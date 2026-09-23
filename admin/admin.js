@@ -131,7 +131,7 @@
         const btn = $('#start-btn');
         btn.disabled = !all;
         btn.textContent = all ? 'Начать игру' : `Ждём команды · ${ready} из ${teams.length}`;
-        $('#waiting').textContent = all ? 'Все команды на месте — можно начинать' : 'Кнопка «Начать» включится, когда зайдут все три команды';
+        $('#waiting').textContent = all ? 'Все команды на месте — можно начинать' : `Кнопка «Начать» включится, когда зайдут все команды (${teams.length})`;
       } catch {}
     };
     tick(); poll = setInterval(tick, 2500);

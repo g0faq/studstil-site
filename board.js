@@ -160,27 +160,29 @@
       labels: ['Прошлый образ', 'Страх', 'Не молодиться', 'Образ с характером'], extraLabels: [] },
     { id: 'alina', name: 'Алина', age: 24, letter: 'А', team: 'Команда 3', code: '303', accent: '#FF5A5F', accent_green: '#FF5A5F', photo: 'img/alina.svg', photo_green: 'img/alina-green.svg', total: 4,
       labels: ['Цель', 'Время на сборы', 'Цвет волос', 'Чувство'], extraLabels: ['Референсы'] },
+    { id: 'kristina', name: 'Кристина', age: 19, letter: 'К', team: 'Команда 4', code: '404', accent: '#7FB2FF', accent_green: '#5FD3C4', photo: null, photo_green: null, total: 4,
+      labels: ['Повод', 'Страх', 'Бюджет', 'Образ'], extraLabels: [] },
   ];
-  let demoDone = [1, 0, 2];
+  let demoDone = [1, 0, 2, 3];
 
   function demoTeams() {
     return DEMO.map((d, i) => ({
-      ...d, done: demoDone[i], sessions: [2, 3, 2][i], finished: demoDone[i] === d.total,
+      ...d, done: demoDone[i], sessions: [2, 3, 2, 2][i], finished: demoDone[i] === d.total,
       tags: d.labels.map((label, j) => ({ label, on: j < demoDone[i] })),
       extra: demoDone[i] === d.total ? d.extraLabels : [],
     }));
   }
 
   function runDemo() {
-    applyTimer({ stage: 'play', left: 600 });
+    applyTimer({ stage: 'play', left: 420 });
     $('#login').classList.add('hidden'); $('#board').classList.remove('hidden');
     $('#reset-btn').textContent = 'Демо-режим: сбросить прогресс';
     $('#reset-btn').onclick = () => { demoDone = [0, 0, 0]; render(demoTeams()); };
     render(demoTeams());
     setInterval(() => {
-      const i = Math.floor(Math.random() * 3);
+      const i = Math.floor(Math.random() * DEMO.length);
       if (demoDone[i] < DEMO[i].total && Math.random() > 0.35) demoDone[i]++;
-      if (demoDone.every((d, k) => d === DEMO[k].total)) demoDone = [0, 1, 0];
+      if (demoDone.every((d, k) => d === DEMO[k].total)) demoDone = DEMO.map(() => 0);
       render(demoTeams());
     }, 4000);
   }
