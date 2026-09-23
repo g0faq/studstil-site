@@ -10,9 +10,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260923201808">
-<link rel="stylesheet" href="reveal.css?v=20260923201808">
-<link rel="stylesheet" href="work.css?v=20260923201808">
+<link rel="stylesheet" href="styles.css?v=20260923202708">
+<link rel="stylesheet" href="reveal.css?v=20260923202708">
+<link rel="stylesheet" href="work.css?v=20260923202708">
 <script>try{var q=new URLSearchParams(location.search).get('palette');if(q)localStorage.setItem('bc-palette',q==='orange'?'':q);var p=localStorage.getItem('bc-palette');if(p)document.documentElement.dataset.palette=p;var t=localStorage.getItem('bc-theme')||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');document.documentElement.dataset.theme=t}catch(e){}</script>
 </head>
 <body>
@@ -40,7 +40,10 @@
       </div>
       <form id="code-form" class="rise" style="--d:1.05s;display:flex;flex-direction:column;gap:10px;padding-top:6px">
         <label for="code" class="caps dim" style="font-size:12px;letter-spacing:.16em">Код команды</label>
-        <div class="code-field"><input id="code" class="code-input" inputmode="numeric" autocomplete="off" placeholder="" maxlength="20"></div>
+        <div class="code-field">
+          <div class="code-cells" id="code-cells" aria-hidden="true"></div>
+          <input id="code" class="code-input" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="" maxlength="8">
+        </div>
         <div class="err" id="code-err" role="alert"></div>
       </form>
     </div>
@@ -227,8 +230,8 @@
     </div>
   </section>
 </div>
-<script src="config.js?v=20260923201808"></script>
-<script src="reveal.js?v=20260923201808"></script>
-<script src="app.js?v=20260923201808"></script>
+<script src="config.js?v=20260923202708"></script>
+<script src="reveal.js?v=20260923202708"></script>
+<script src="app.js?v=20260923202708"></script>
 </body>
 </html>
